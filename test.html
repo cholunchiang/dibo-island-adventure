@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 島嶼冒險 - Firebase 測試</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        .test-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .test-section h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        button.secondary {
+            background: #6c757d;
+        }
+
+        button.secondary:hover {
+            background: #5a6268;
+        }
+
+        .log {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 12px;
+            line-height: 1.5;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+        }
+
+        .log-entry.error {
+            color: #dc3545;
+        }
+
+        .log-entry.success {
+            color: #28a745;
+        }
+
+        .log-entry.info {
+            color: #667eea;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .test-result {
+            margin-top: 16px;
+            padding: 12px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        .test-result h3 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .data-display {
+            background: #f5f5f5;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            max-height: 200px;
+            overflow-y: auto;
+            word-break: break-all;
+        }
+
+        .summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 24px;
+        }
+
+        .summary h2 {
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .summary ul {
+            margin-left: 20px;
+        }
+
+        .summary li {
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 島嶼冒險 Firebase 測試</h1>
+        <p class="subtitle">完整的讀寫功能測試 - 確保 Firebase 正常連接</p>
+
+        <!-- 測試 1: Firebase 初始化 -->
+        <div class="test-section">
+            <h2>1️⃣ Firebase 初始化</h2>
+            <div id="test1-status" class="status pending">
+                <span class="spinner"></span>
+                等待中...
+            </div>
+            <button onclick="testFirebaseInit()">測試初始化</button>
+            <div class="log" id="test1-log"></div>
+        </div>
+
+        <!-- 測試 2: 讀取數據 -->
+        <div class="test-section">
+            <h2>2️⃣ 讀取數據</h2>
+            <div id="test2-status" class="status pending">
+                <span class="spinner"></span>
+                等待中...
+            </div>
+            <button onclick="testReadData()">讀取現有數據</button>
+            <div class="test-result" id="test2-result"></div>
+            <div class="log" id="test2-log"></div>
+        </div>
+
+        <!-- 測試 3: 寫入數據 -->
+        <div class="test-section">
+            <h2>3️⃣ 寫入測試數據</h2>
+            <div id="test3-status" class="status pending">
+                <span class="spinner"></span>
+                等待中...
+            </div>
+            <button onclick="testWriteData()">寫入測試數據</button>
+            <div class="test-result" id="test3-result"></div>
+            <div class="log" id="test3-log"></div>
+        </div>
+
+        <!-- 測試 4: 驗證讀取 -->
+        <div class="test-section">
+            <h2>4️⃣ 驗證寫入結果</h2>
+            <div id="test4-status" class="status pending">
+                <span class="spinner"></span>
+                等待中...
+            </div>
+            <button onclick="testVerifyWrite()">驗證數據</button>
+            <div class="test-result" id="test4-result"></div>
+            <div class="log" id="test4-log"></div>
+        </div>
+
+        <!-- 測試 5: 清理測試數據 -->
+        <div class="test-section">
+            <h2>5️⃣ 清理測試數據</h2>
+            <div id="test5-status" class="status pending">
+                <span class="spinner"></span>
+                等待中...
+            </div>
+            <button onclick="testCleanup()" class="secondary">清理測試數據</button>
+            <div class="log" id="test5-log"></div>
+        </div>
+
+        <!-- 摘要 -->
+        <div class="summary">
+            <h2>📊 測試摘要</h2>
+            <ul>
+                <li id="summary-init">✓ Firebase 初始化：待測試</li>
+                <li id="summary-read">✓ 讀取數據：待測試</li>
+                <li id="summary-write">✓ 寫入數據：待測試</li>
+                <li id="summary-verify">✓ 驗證寫入：待測試</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+
+    <script>
+        // Firebase Config（與 index.html 相同）
+        const firebaseConfig = {
+          apiKey: "AIzaSyDwgZjAw-6D-oQAkPMpXr06ypdrTb39gdo",
+          authDomain: "dibo-island-adventure.firebaseapp.com",
+          databaseURL: "https://dibo-island-adventure-default-rtdb.firebaseio.com",
+          projectId: "dibo-island-adventure",
+          storageBucket: "dibo-island-adventure.firebasestorage.app",
+          messagingSenderId: "822555933244",
+          appId: "1:822555933244:web:cb655678944ba55d1a6139"
+        };
+
+        let db = null;
+        let testData = {
+            visitData: { "測試島": { count: 99, date: new Date().toLocaleDateString('zh-TW') } },
+            islandNotes: { "測試島": "這是自動化測試數據" },
+            testTimestamp: new Date().toISOString()
+        };
+
+        // 工具函數
+        function log(elementId, message, type = 'info') {
+            const logEl = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString('zh-TW');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function updateStatus(elementId, statusType, message) {
+            const el = document.getElementById(elementId);
+            let icon = '⏳';
+            if (statusType === 'success') icon = '✅';
+            if (statusType === 'error') icon = '❌';
+            if (statusType === 'info') icon = 'ℹ️';
+            
+            el.className = `status ${statusType}`;
+            el.innerHTML = `<span>${icon}</span> ${message}`;
+
+            // 更新摘要
+            const testNum = elementId.replace('test', '').replace('-status', '');
+            const summaryEl = document.getElementById(`summary-${['init', 'read', 'write', 'verify'][testNum - 1]}`);
+            if (summaryEl) {
+                summaryEl.innerHTML = `${icon} ${summaryEl.textContent.split('：')[0]}：${statusType === 'success' ? '通過 ✨' : statusType === 'error' ? '失敗 ⚠️' : '進行中...'}`;
+            }
+        }
+
+        // 測試 1: Firebase 初始化
+        async function testFirebaseInit() {
+            updateStatus('test1-status', 'info', '正在初始化 Firebase...');
+            log('test1-log', '開始初始化 Firebase...', 'info');
+
+            try {
+                const app = firebase.initializeApp(firebaseConfig);
+                db = firebase.getDatabase(app);
+                
+                log('test1-log', '✅ Firebase App 已初始化', 'success');
+                log('test1-log', `📍 Database URL: ${firebaseConfig.databaseURL}`, 'success');
+                log('test1-log', `🔧 Project ID: ${firebaseConfig.projectId}`, 'success');
+                
+                updateStatus('test1-status', 'success', 'Firebase 初始化成功！🎉');
+            } catch (error) {
+                log('test1-log', `❌ 初始化失敗: ${error.message}`, 'error');
+                updateStatus('test1-status', 'error', `初始化失敗: ${error.message}`);
+            }
+        }
+
+        // 測試 2: 讀取數據
+        async function testReadData() {
+            if (!db) {
+                updateStatus('test2-status', 'error', '❌ Firebase 未初始化！請先執行測試 1');
+                return;
+            }
+
+            updateStatus('test2-status', 'info', '正在讀取數據...');
+            log('test2-log', '從 Firebase 讀取現有數據...', 'info');
+
+            try {
+                const snapshot = await firebase.database().ref('/').get();
+                const data = snapshot.val() || {};
+                
+                log('test2-log', '✅ 數據讀取成功！', 'success');
+                log('test2-log', `📊 訪問數據: ${Object.keys(data.visitData || {}).length} 個島嶼`, 'info');
+                log('test2-log', `📝 筆記數: ${Object.keys(data.islandNotes || {}).length}`, 'info');
+                log('test2-log', `🏝️ 自訂島嶼: ${Object.keys(data.customIslands || {}).length} 個`, 'info');
+
+                const resultEl = document.getElementById('test2-result');
+                resultEl.innerHTML = `
+                    <h3>📊 當前數據：</h3>
+                    <div class="data-display">${JSON.stringify(data, null, 2)}</div>
+                `;
+
+                updateStatus('test2-status', 'success', '數據讀取成功！');
+            } catch (error) {
+                log('test2-log', `❌ 讀取失敗: ${error.message}`, 'error');
+                updateStatus('test2-status', 'error', `讀取失敗: ${error.message}`);
+            }
+        }
+
+        // 測試 3: 寫入測試數據
+        async function testWriteData() {
+            if (!db) {
+                updateStatus('test3-status', 'error', '❌ Firebase 未初始化！');
+                return;
+            }
+
+            updateStatus('test3-status', 'info', '正在寫入測試數據...');
+            log('test3-log', '準備寫入測試數據...', 'info');
+
+            try {
+                // 讀取現有數據
+                const snapshot = await firebase.database().ref('/').get();
+                const currentData = snapshot.val() || {};
+
+                // 合併新數據
+                const updatedData = {
+                    visitData: { ...currentData.visitData, ...testData.visitData },
+                    islandNotes: { ...currentData.islandNotes, ...testData.islandNotes },
+                    customIslands: currentData.customIslands || {},
+                    testTimestamp: testData.testTimestamp
+                };
+
+                // 寫入到 Firebase
+                await firebase.database().ref('/').update(updatedData);
+
+                log('test3-log', '✅ 測試數據寫入成功！', 'success');
+                log('test3-log', `📍 寫入時間: ${testData.testTimestamp}`, 'success');
+                log('test3-log', '🔄 已添加「測試島」訪問記錄（99 次）', 'success');
+
+                const resultEl = document.getElementById('test3-result');
+                resultEl.innerHTML = `
+                    <h3>📝 寫入的數據：</h3>
+                    <div class="data-display">${JSON.stringify(testData, null, 2)}</div>
+                `;
+
+                updateStatus('test3-status', 'success', '數據寫入成功！');
+            } catch (error) {
+                log('test3-log', `❌ 寫入失敗: ${error.message}`, 'error');
+                updateStatus('test3-status', 'error', `寫入失敗: ${error.message}`);
+            }
+        }
+
+        // 測試 4: 驗證寫入結果
+        async function testVerifyWrite() {
+            if (!db) {
+                updateStatus('test4-status', 'error', '❌ Firebase 未初始化！');
+                return;
+            }
+
+            updateStatus('test4-status', 'info', '正在驗證寫入結果...');
+            log('test4-log', '重新讀取數據以驗證寫入...', 'info');
+
+            try {
+                const snapshot = await firebase.database().ref('/visitData/測試島').get();
+                const data = snapshot.val();
+
+                if (data && data.count === 99) {
+                    log('test4-log', '✅ 驗證成功！', 'success');
+                    log('test4-log', `✓ 「測試島」訪問次數: ${data.count} 次`, 'success');
+                    log('test4-log', `✓ 首訪日期: ${data.date}`, 'success');
+
+                    const resultEl = document.getElementById('test4-result');
+                    resultEl.innerHTML = `
+                        <h3>✅ 驗證結果：</h3>
+                        <div class="data-display">${JSON.stringify(data, null, 2)}</div>
+                    `;
+
+                    updateStatus('test4-status', 'success', '驗證通過！數據已正確保存');
+                } else {
+                    throw new Error('數據驗證失敗：找不到預期的數據');
+                }
+            } catch (error) {
+                log('test4-log', `❌ 驗證失敗: ${error.message}`, 'error');
+                updateStatus('test4-status', 'error', `驗證失敗: ${error.message}`);
+            }
+        }
+
+        // 測試 5: 清理測試數據
+        async function testCleanup() {
+            if (!db) {
+                updateStatus('test5-status', 'error', '❌ Firebase 未初始化！');
+                return;
+            }
+
+            if (!confirm('確定要刪除測試數據嗎？')) {
+                return;
+            }
+
+            updateStatus('test5-status', 'info', '正在清理測試數據...');
+            log('test5-log', '刪除測試數據...', 'info');
+
+            try {
+                const snapshot = await firebase.database().ref('/').get();
+                const currentData = snapshot.val() || {};
+
+                // 移除測試數據
+                delete currentData.visitData['測試島'];
+                delete currentData.islandNotes['測試島'];
+                delete currentData.testTimestamp;
+
+                await firebase.database().ref('/').update(currentData);
+
+                log('test5-log', '✅ 測試數據已清理！', 'success');
+                log('test5-log', '🗑️ 已刪除「測試島」記錄', 'success');
+
+                updateStatus('test5-status', 'success', '清理完成！');
+            } catch (error) {
+                log('test5-log', `❌ 清理失敗: ${error.message}`, 'error');
+                updateStatus('test5-status', 'error', `清理失敗: ${error.message}`);
+            }
+        }
+
+        // 頁面載入時自動初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            log('test1-log', '頁面已加載，等待用戶操作...', 'info');
+        });
+    </script>
+</body>
+</html>
