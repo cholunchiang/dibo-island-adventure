@@ -1,0 +1,33 @@
+name: Island Data Sync
+
+on:
+  repository_dispatch:
+    types: [sync-data]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Update data.json
+        run: |
+          if [ "${{ github.event.client_payload.action }}" = "save" ]; then
+            echo '${{ github.event.client_payload.data }}' > data.json
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add data.json
+            git commit -m "🏝️ 迪寶兒更新冒險日誌 - $(date +'%Y-%m-%d %H:%M:%S')" || true
+            git push
+          fi
+      
+      - name: Serve data
+        if: github.event.client_payload.action == 'load'
+        run: |
+          if [ -f "data.json" ]; then
+            cat data.json
+          else
+            echo '{"visitData":{},"islandNotes":{},"customIslands":{}}'
+          fi
