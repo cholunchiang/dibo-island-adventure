@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="島嶼探險">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%23D4A574' width='180' height='180'/><text x='90' y='100' font-size='80' text-anchor='middle' fill='white' font-weight='bold'>🏝️</text></svg>">
+    <title>島嶼冒險日誌</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        :root {
+            color-scheme: light dark;
+            --primary-color: #D4A574;
+            --secondary-color: #E8D5C4;
+            --accent-color: #B8956A;
+            --light-color: #F5EFE7;
+            --text-color: #5A4A42;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex;
+            flex-direction: column;
+            padding-top: max(0px, env(safe-area-inset-top));
+            padding-bottom: env(safe-area-inset-bottom);
+            background: linear-gradient(135deg, #F5EFE7 0%, #E8D5C4 50%, #DCC9B8 100%);
+            color: var(--text-color);
+            min-height: 100vh;
+        }
+
+        .header {
+            padding: 16px;
+            padding-top: max(16px, env(safe-area-inset-top));
+            border-radius: 0 0 30px 30px;
+            background: linear-gradient(135deg, #D4A574 0%, #C19A6B 100%);
+            box-shadow: 0 8px 20px rgba(180, 138, 82, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            letter-spacing: 0.5px;
+        }
+
+        .header p {
+            font-size: 13px;
+            opacity: 0.95;
+            color: rgba(255, 255, 255, 0.9);
+            letter-spacing: 0.3px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            padding: 0 8px;
+            margin-top: 14px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 8px;
+            background: none;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            opacity: 0.7;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-btn.active {
+            opacity: 1;
+            border-bottom-color: white;
+            transform: scale(1.05);
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 12px;
+            display: none;
+        }
+
+        .content-area.active {
+            display: block;
+        }
+
+        .card {
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 2px solid rgba(212, 165, 116, 0.2);
+            box-shadow: 0 4px 15px rgba(180, 138, 82, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+            opacity: 0.03;
+            pointer-events: none;
+        }
+
+        .card h2 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-color);
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card h2::before {
+            content: '';
+            display: inline-block;
+            width: 3px;
+            height: 18px;
+            background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+            border-radius: 2px;
+        }
+
+        .search-box {
+            padding: 12px 14px;
+            border-radius: 15px;
+            border: 2px solid var(--secondary-color);
+            font-size: 14px;
+            width: 100%;
+            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--text-color);
+            transition: all 0.3s;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.1);
+        }
+
+        .search-box::placeholder {
+            color: #A0907F;
+        }
+
+        .island-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .island-item {
+            display: flex;
+            align-items: center;
+            padding: 14px;
+            border-radius: 15px;
+            border-left: 4px solid var(--primary-color);
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(135deg, rgba(212, 165, 116, 0.05), rgba(230, 205, 180, 0.05));
+            border: 1px solid rgba(212, 165, 116, 0.15);
+        }
+
+        .island-item:active {
+            transform: scale(0.98);
+            background: linear-gradient(135deg, rgba(212, 165, 116, 0.12), rgba(230, 205, 180, 0.12));
+        }
+
+        .island-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .island-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: var(--text-color);
+        }
+
+        .island-type {
+            font-size: 12px;
+            opacity: 0.7;
+            color: var(--accent-color);
+        }
+
+        button {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            -webkit-user-select: none;
+            user-select: none;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            box-shadow: 0 4px 10px rgba(180, 138, 82, 0.2);
+        }
+
+        button:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 5px rgba(180, 138, 82, 0.15);
+        }
+
+        .btn-small {
+            padding: 8px 10px;
+            font-size: 12px;
+            background: linear-gradient(135deg, #6BBD8E, #5BA874);
+        }
+
+        .btn-small.danger {
+            background: linear-gradient(135deg, #E8957D, #D97260);
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .resource-tag, .drop-tag {
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+            background: linear-gradient(135deg, rgba(107, 189, 142, 0.15), rgba(107, 189, 142, 0.08));
+            color: #4A8D5F;
+            border: 1px solid rgba(107, 189, 142, 0.3);
+        }
+
+        .drop-tag {
+            background: linear-gradient(135deg, rgba(212, 165, 116, 0.15), rgba(212, 165, 116, 0.08));
+            color: #9B7E54;
+            border: 1px solid rgba(212, 165, 116, 0.3);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .stat-item {
+            background: linear-gradient(135deg, rgba(212, 165, 116, 0.1), rgba(230, 205, 180, 0.08));
+            padding: 14px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid rgba(212, 165, 116, 0.2);
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            opacity: 0.7;
+            color: var(--text-color);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            opacity: 0.6;
+            font-size: 13px;
+            color: var(--text-color);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+            align-items: flex-end;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(3px);
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            width: 100%;
+            max-height: 90vh;
+            border-radius: 30px 30px 0 0;
+            padding: 24px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 239, 231, 0.95) 100%);
+            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--secondary-color), #E0D0BF);
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-color);
+            transition: all 0.3s;
+        }
+
+        .modal-close:active {
+            transform: scale(0.95);
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            opacity: 0.85;
+            color: var(--text-color);
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 11px 13px;
+            border-radius: 12px;
+            border: 2px solid var(--secondary-color);
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text-color);
+            background: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.08);
+        }
+
+        .resource-section {
+            margin-bottom: 18px;
+        }
+
+        .resource-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            opacity: 0.8;
+            color: var(--text-color);
+        }
+
+        .record-section {
+            border-top: 2px solid rgba(212, 165, 116, 0.1);
+            padding-top: 18px;
+            margin-top: 18px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 8px;
+        }
+
+        .decoration {
+            position: fixed;
+            pointer-events: none;
+            opacity: 0.1;
+            z-index: 0;
+        }
+
+        .leaf-1 { top: 10%; right: 5%; font-size: 40px; animation: float 8s ease-in-out infinite; }
+        .leaf-2 { top: 30%; left: 5%; font-size: 35px; animation: float 7s ease-in-out infinite 1s; }
+        .flower-1 { top: 50%; right: 10%; font-size: 30px; animation: float 9s ease-in-out infinite 2s; }
+        .flower-2 { top: 70%; left: 8%; font-size: 28px; animation: float 6s ease-in-out infinite 1.5s; }
+    </style>
+</head>
+<body>
+    <div class="decoration leaf-1">🍃</div>
+    <div class="decoration leaf-2">🌿</div>
+    <div class="decoration flower-1">🌼</div>
+    <div class="decoration flower-2">🌸</div>
+
+    <div class="header">
+        <div class="header-content">
+            <h1>🏝️ 島嶼冒險</h1>
+            <p>✨ 記錄你的無人島探險故事</p>
+            <div style="background: rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 10px 12px; margin: 12px 0; font-size: 13px; color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
+                <div style="margin-bottom: 5px;">🏠 <strong>胖嘟嘟推不島</strong></div>
+                <div>👤 <strong>迪寶兒</strong> 的冒險日誌</div>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('explore')">🗺️ 探索</button>
+                <button class="tab-btn" onclick="switchTab('add')">➕ 新增</button>
+                <button class="tab-btn" onclick="switchTab('record')">📝 日誌</button>
+                <button class="tab-btn" onclick="switchTab('stats')">📊 冒險</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="explore" class="content-area active">
+        <div class="card">
+            <h2>🔍 搜尋島嶼</h2>
+            <input type="text" class="search-box" id="searchInput" placeholder="輸入島嶼名稱..." onkeyup="filterIslands()">
+        </div>
+        <div class="card">
+            <div class="island-list" id="islandList"></div>
+        </div>
+    </div>
+
+    <div id="add" class="content-area">
+        <div class="card">
+            <h2>➕ 新增自訂島嶼</h2>
+            <form onsubmit="addCustomIsland(event)">
+                <div class="form-group">
+                    <label>🏝️ 島嶼名稱 *</label>
+                    <input type="text" id="customName" placeholder="例：龍蝦島" required>
+                </div>
+                <div class="form-group">
+                    <label>🏷️ 島嶼類型 *</label>
+                    <select id="customType" required>
+                        <option value="">選擇類型</option>
+                        <option value="季節特殊">季節特殊</option>
+                        <option value="蔬菜">蔬菜</option>
+                        <option value="花卉">花卉</option>
+                        <option value="其他">其他</option>
+                        <option value="自訂">自訂</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>🎁 主要資源</label>
+                    <input type="text" id="customResources" placeholder="用逗號分隔，例：龍蝦, 海星, 珍珠">
+                </div>
+                <div class="form-group">
+                    <label>💎 掉落物品</label>
+                    <input type="text" id="customDrops" placeholder="用逗號分隔，例：食譜, 配方">
+                </div>
+                <div class="form-group">
+                    <label>📝 說明</label>
+                    <textarea id="customDescription" placeholder="簡短說明這個島嶼的特色..."></textarea>
+                </div>
+                <button type="submit" style="width: 100%;">✅ 新增島嶼</button>
+            </form>
+        </div>
+        <div class="card">
+            <h2>📋 我的自訂島嶼</h2>
+            <div id="customIslandsList"></div>
+        </div>
+    </div>
+
+    <div id="record" class="content-area">
+        <div class="card">
+            <h2>📝 冒險日誌</h2>
+            <div id="visitLog"></div>
+            <div id="emptyLog" class="empty-state">還沒有冒險紀錄呢～ 快去探索吧！</div>
+        </div>
+    </div>
+
+    <div id="stats" class="content-area">
+        <div class="card">
+            <h2>📊 冒險統計</h2>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalVisits">0</div>
+                    <div class="stat-label">總訪問次數</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="uniqueIslands">0</div>
+                    <div class="stat-label">探索過的島嶼</div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <h2>⭐ 最愛的島嶼</h2>
+            <div id="topIslands"></div>
+        </div>
+        <div class="card">
+            <h2>📈 探險進度</h2>
+            <div id="categoryProgress"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <span id="modalTitle"></span>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="resource-section">
+                <h3>🎁 主要資源</h3>
+                <div class="tags" id="resourceTags"></div>
+            </div>
+            <div class="resource-section">
+                <h3>💎 掉落物品</h3>
+                <div class="tags" id="dropTags"></div>
+            </div>
+            <div class="resource-section">
+                <h3>📝 島嶼介紹</h3>
+                <p id="description" style="font-size: 13px; line-height: 1.6; color: var(--text-color);"></p>
+            </div>
+            <div class="record-section">
+                <h3>📋 訪問次數</h3>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                    <button class="btn-small" onclick="addVisit()">+1 訪問</button>
+                    <button class="btn-small danger" onclick="resetVisits()" style="flex: 1;">重設</button>
+                </div>
+                <div style="text-align: center; font-size: 32px; font-weight: 700; margin: 16px 0; color: var(--primary-color);" id="visitCount">0</div>
+            </div>
+            <div class="resource-section">
+                <h3>💭 探險筆記</h3>
+                <textarea id="islandNotes" placeholder="記錄你在此島的特別發現或心得..."></textarea>
+                <button onclick="saveIslandNotes()" style="width: 100%;">💾 保存筆記</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const islandsDatabase = [
+            { name: "特殊植物島", emoji: "🌿", type: "季節特殊", resources: ["光蘚", "蔓藤", "雞蛋花"], drops: ["光蘚配方", "蔓藤配方"], description: "生長著光蘚、蔓藤還有灌木的雞蛋花，可以撿到特殊配方" },
+            { name: "富有島", emoji: "💰", type: "季節特殊", resources: ["搖錢樹", "錢石頭"], drops: ["1000鈴錢/包"], description: "所有的石頭都會出錢，非常划算的島嶼！" },
+            { name: "櫻花島", emoji: "🌸", type: "季節特殊", resources: ["櫻花樹"], drops: ["櫻花花瓣", "櫻花配方"], description: "春季限定，生長著美麗的櫻花樹" },
+            { name: "夏天島", emoji: "☀️", type: "季節特殊", resources: ["夏天貝殼"], drops: ["夏天貝殼配方"], description: "海邊有特殊的夏天貝殼" },
+            { name: "紅葉島", emoji: "🍂", type: "季節特殊", resources: ["松果", "紅葉"], drops: ["紅葉配方"], description: "秋季限定，地上有松果和紅葉" },
+            { name: "蘑菇島", emoji: "🍄", type: "季節特殊", resources: ["蘑菇", "松果"], drops: ["蘑菇配方"], description: "秋季限定，生長著可愛的蘑菇" },
+            { name: "冬天島", emoji: "❄️", type: "季節特殊", resources: ["雪花"], drops: ["雪傢俱配方"], description: "冬季限定，能抓到美麗的雪花" },
+            { name: "夜晚島", emoji: "🌙", type: "季節特殊", resources: ["普通資源"], drops: ["普通配方"], description: "時間永遠是晚上的神秘島嶼" },
+            { name: "胡蘿蔔島", emoji: "🥕", type: "蔬菜", resources: ["胡蘿蔔"], drops: ["菜譜"], description: "生長著新鮮的胡蘿蔔" },
+            { name: "番茄島", emoji: "🍅", type: "蔬菜", resources: ["番茄"], drops: ["菜譜"], description: "生長著香甜的番茄" },
+            { name: "土豆島", emoji: "🥔", type: "蔬菜", resources: ["土豆"], drops: ["菜譜"], description: "生長著營養的土豆" },
+            { name: "甘蔗島", emoji: "🌾", type: "蔬菜", resources: ["甘蔗"], drops: ["菜譜"], description: "生長著甜蜜的甘蔗" },
+            { name: "小麥島", emoji: "🌾", type: "蔬菜", resources: ["小麥"], drops: ["菜譜"], description: "生長著金黃的小麥" },
+            { name: "南瓜島", emoji: "🎃", type: "蔬菜", resources: ["南瓜"], drops: ["菜譜"], description: "生長著可愛的橙色南瓜" },
+            { name: "陶俑島", emoji: "🏺", type: "其他", resources: ["陶俑", "陶俑碎片"], drops: ["陶俑碎片"], description: "下雨時一定會有一個陶俑" },
+            { name: "竹子島", emoji: "🎋", type: "其他", resources: ["竹子", "竹筍"], drops: ["竹筍", "陶俑碎片x2"], description: "能挖竹筍和陶俑的豐富島嶼" },
+            { name: "杜鵑和鬱金香島", emoji: "🌷", type: "花卉", resources: ["杜鵑", "鬱金香"], drops: ["花卉配方"], description: "採集美麗花卉的島嶼" },
+            { name: "柊和玫瑰島", emoji: "🌹", type: "花卉", resources: ["柊", "玫瑰"], drops: ["花卉配方"], description: "採集優雅花卉的島嶼" }
+        ];
+
+        let currentIsland = null;
+        let visitData = JSON.parse(localStorage.getItem('visitData')) || {};
+        let islandNotes = JSON.parse(localStorage.getItem('islandNotes')) || {};
+        let customIslands = JSON.parse(localStorage.getItem('customIslands')) || {};
+
+        function renderIslands(islands) {
+            const list = document.getElementById('islandList');
+            if (islands.length === 0) {
+                list.innerHTML = '<div class="empty-state">找不到相符的島嶼呢...</div>';
+                return;
+            }
+            list.innerHTML = islands.map(island => `
+                <div class="island-item" onclick="openIslandDetail('${island.name}')">
+                    <div class="island-info">
+                        <div class="island-name">${island.emoji} ${island.name}</div>
+                        <div class="island-type">${island.type}</div>
+                    </div>
+                    <div style="text-align: right; font-size: 18px; font-weight: 700; color: #D4A574;">
+                        ${visitData[island.name]?.count || 0}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getAllIslands() {
+            const all = [...islandsDatabase];
+            Object.values(customIslands).forEach(island => all.push(island));
+            return all;
+        }
+
+        function filterIslands() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const allIslands = getAllIslands();
+            const filtered = allIslands.filter(island => 
+                island.name.toLowerCase().includes(search) || 
+                island.type.toLowerCase().includes(search)
+            );
+            renderIslands(filtered);
+        }
+
+        function openIslandDetail(islandName) {
+            const allIslands = getAllIslands();
+            currentIsland = allIslands.find(i => i.name === islandName);
+            if (!currentIsland) return;
+
+            document.getElementById('modalTitle').textContent = `${currentIsland.emoji} ${currentIsland.name}`;
+            document.getElementById('resourceTags').innerHTML = currentIsland.resources
+                .map(r => `<span class="resource-tag">🎁 ${r}</span>`).join('');
+            document.getElementById('dropTags').innerHTML = currentIsland.drops
+                .map(d => `<span class="drop-tag">💎 ${d}</span>`).join('');
+            document.getElementById('description').textContent = currentIsland.description;
+            document.getElementById('visitCount').textContent = visitData[islandName]?.count || 0;
+            document.getElementById('islandNotes').value = islandNotes[islandName] || '';
+
+            document.getElementById('modalOverlay').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('show');
+            currentIsland = null;
+        }
+
+        function addVisit() {
+            if (!currentIsland) return;
+            if (!visitData[currentIsland.name]) {
+                visitData[currentIsland.name] = { count: 0, date: new Date().toLocaleDateString('zh-TW') };
+            }
+            visitData[currentIsland.name].count++;
+            localStorage.setItem('visitData', JSON.stringify(visitData));
+            document.getElementById('visitCount').textContent = visitData[currentIsland.name].count;
+            updateDisplay();
+        }
+
+        function resetVisits() {
+            if (!currentIsland) return;
+            if (confirm('真的要重新計算嗎？')) {
+                delete visitData[currentIsland.name];
+                localStorage.setItem('visitData', JSON.stringify(visitData));
+                document.getElementById('visitCount').textContent = 0;
+                updateDisplay();
+            }
+        }
+
+        function saveIslandNotes() {
+            if (!currentIsland) return;
+            islandNotes[currentIsland.name] = document.getElementById('islandNotes').value;
+            localStorage.setItem('islandNotes', JSON.stringify(islandNotes));
+            alert('筆記已保存～💚');
+        }
+
+        function addCustomIsland(event) {
+            event.preventDefault();
+            const name = document.getElementById('customName').value.trim();
+            const type = document.getElementById('customType').value;
+            const resources = document.getElementById('customResources').value
+                .split(',').map(s => s.trim()).filter(s => s);
+            const drops = document.getElementById('customDrops').value
+                .split(',').map(s => s.trim()).filter(s => s);
+            const description = document.getElementById('customDescription').value.trim();
+
+            if (!name || !type) {
+                alert('請填寫島嶼名稱和類型');
+                return;
+            }
+
+            const id = 'custom_' + Date.now();
+            customIslands[id] = {
+                id: id,
+                name: name,
+                emoji: '🌟',
+                type: type,
+                resources: resources.length > 0 ? resources : ['待補充'],
+                drops: drops.length > 0 ? drops : ['待補充'],
+                description: description || '自訂島嶼',
+                isCustom: true
+            };
+
+            localStorage.setItem('customIslands', JSON.stringify(customIslands));
+            
+            document.getElementById('customName').value = '';
+            document.getElementById('customType').value = '';
+            document.getElementById('customResources').value = '';
+            document.getElementById('customDrops').value = '';
+            document.getElementById('customDescription').value = '';
+
+            alert(`✅ ${name} 已加入探險清單！`);
+            updateCustomIslandsList();
+            filterIslands();
+        }
+
+        function deleteCustomIsland(id) {
+            if (confirm('確定要移除這個島嶼嗎？')) {
+                delete customIslands[id];
+                localStorage.setItem('customIslands', JSON.stringify(customIslands));
+                updateCustomIslandsList();
+                filterIslands();
+            }
+        }
+
+        function updateCustomIslandsList() {
+            const list = document.getElementById('customIslandsList');
+            const islands = Object.values(customIslands);
+
+            if (islands.length === 0) {
+                list.innerHTML = '<div class="empty-state">還沒有自訂島嶼～</div>';
+                return;
+            }
+
+            list.innerHTML = islands.map(island => `
+                <div class="island-item" style="margin-bottom: 8px;">
+                    <div class="island-info">
+                        <div class="island-name">${island.emoji} ${island.name}</div>
+                        <div class="island-type">${island.type}</div>
+                    </div>
+                    <button class="btn-small danger" onclick="deleteCustomIsland('${island.id}')" style="white-space: nowrap;">🗑️ 移除</button>
+                </div>
+            `).join('');
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.content-area').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabName === 'record') updateVisitLog();
+            if (tabName === 'stats') updateStats();
+            if (tabName === 'add') updateCustomIslandsList();
+        }
+
+        function updateVisitLog() {
+            const log = document.getElementById('visitLog');
+            const empty = document.getElementById('emptyLog');
+            const visits = Object.entries(visitData).filter(([_, data]) => data.count > 0);
+
+            if (visits.length === 0) {
+                log.style.display = 'none';
+                empty.style.display = 'block';
+                return;
+            }
+
+            log.style.display = 'block';
+            empty.style.display = 'none';
+            log.innerHTML = visits.map(([name, data]) => {
+                const allIslands = getAllIslands();
+                const island = allIslands.find(i => i.name === name);
+                return `
+                    <div class="island-item" style="margin-bottom: 8px;">
+                        <div class="island-info">
+                            <div class="island-name">${island?.emoji || '🏝️'} ${name}</div>
+                            <div class="island-type">首次: ${data.date}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: #D4A574;">${data.count}</div>
+                            <div style="font-size: 11px; opacity: 0.6;">次訪問</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            const totalVisits = Object.values(visitData).reduce((sum, v) => sum + v.count, 0);
+            const uniqueIslands = Object.keys(visitData).length;
+
+            document.getElementById('totalVisits').textContent = totalVisits;
+            document.getElementById('uniqueIslands').textContent = uniqueIslands;
+
+            const sorted = Object.entries(visitData)
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, 5);
+
+            const topHtml = sorted.length === 0 
+                ? '<div class="empty-state">快去探險，累積訪問紀錄吧～</div>'
+                : sorted.map(([name, data]) => {
+                    const allIslands = getAllIslands();
+                    const island = allIslands.find(i => i.name === name);
+                    return `
+                        <div class="island-item" style="margin-bottom: 8px;">
+                            <div class="island-info">
+                                <div class="island-name">${island?.emoji || '🏝️'} ${name}</div>
+                            </div>
+                            <div style="font-size: 18px; font-weight: 700; color: #D4A574;">${data.count}次</div>
+                        </div>
+                    `;
+                }).join('');
+
+            document.getElementById('topIslands').innerHTML = topHtml;
+
+            const typeCount = {};
+            const allIslands = getAllIslands();
+            allIslands.forEach(i => {
+                if (!typeCount[i.type]) typeCount[i.type] = { total: 0, visited: 0 };
+                typeCount[i.type].total++;
+            });
+
+            Object.entries(visitData).forEach(([name, _]) => {
+                const island = allIslands.find(i => i.name === name);
+                if (island && typeCount[island.type]) {
+                    typeCount[island.type].visited++;
+                }
+            });
+
+            const typeHtml = Object.entries(typeCount).map(([type, data]) => {
+                const percentage = Math.round((data.visited / data.total) * 100);
+                return `
+                    <div style="margin-bottom: 14px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: var(--text-color);">
+                            <span>${type}</span>
+                            <span>${data.visited}/${data.total}</span>
+                        </div>
+                        <div style="width: 100%; height: 8px; border-radius: 4px; background: rgba(212, 165, 116, 0.2); overflow: hidden;">
+                            <div style="width: ${percentage}%; height: 100%; background: linear-gradient(90deg, #6BBD8E, #D4A574); border-radius: 4px; transition: width 0.5s ease;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('categoryProgress').innerHTML = typeHtml;
+        }
+
+        function updateDisplay() {
+            filterIslands();
+        }
+
+        filterIslands();
+        updateStats();
+        updateCustomIslandsList();
+
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
+</body>
+</html>
