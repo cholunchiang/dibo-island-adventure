@@ -43,6 +43,53 @@
             min-height: 100vh;
         }
 
+        .sync-status {
+            position: fixed;
+            top: max(10px, env(safe-area-inset-top));
+            right: 10px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 999;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sync-status.synced {
+            background: rgba(52, 199, 89, 0.2);
+            color: #34C759;
+            border: 1px solid rgba(52, 199, 89, 0.3);
+        }
+
+        .sync-status.syncing {
+            background: rgba(255, 159, 10, 0.2);
+            color: #FF9F0A;
+            border: 1px solid rgba(255, 159, 10, 0.3);
+        }
+
+        .sync-status.error {
+            background: rgba(255, 59, 48, 0.2);
+            color: #FF3B30;
+            border: 1px solid rgba(255, 59, 48, 0.3);
+        }
+
+        .sync-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
         .header {
             padding: 16px;
             padding-top: max(16px, env(safe-area-inset-top));
@@ -458,6 +505,11 @@
     </style>
 </head>
 <body>
+    <div class="sync-status synced" id="syncStatus">
+        <div class="sync-dot"></div>
+        <span id="syncText">已同步</span>
+    </div>
+
     <div class="decoration leaf-1">🍃</div>
     <div class="decoration leaf-2">🌿</div>
     <div class="decoration flower-1">🌼</div>
@@ -618,10 +670,138 @@
             { name: "柊和玫瑰島", emoji: "🌹", type: "花卉", resources: ["柊", "玫瑰"], drops: ["花卉配方"], description: "採集優雅花卉的島嶼" }
         ];
 
+        const GITHUB_CONFIG = {
+            owner: 'cholunchiang',
+            repo: 'dibo-island-adventure',
+            token: 'YOUR_GITHUB_TOKEN_HERE',
+            branch: 'main',
+            path: 'data.json'
+        };
+
         let currentIsland = null;
-        let visitData = JSON.parse(localStorage.getItem('visitData')) || {};
-        let islandNotes = JSON.parse(localStorage.getItem('islandNotes')) || {};
-        let customIslands = JSON.parse(localStorage.getItem('customIslands')) || {};
+        let visitData = {};
+        let islandNotes = {};
+        let customIslands = {};
+        let lastSync = Date.now();
+
+        async function getGitHubFileData() {
+            try {
+                updateSyncStatus('syncing', '同步中...');
+                const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `token ${GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3.raw'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return data;
+                } else if (response.status === 404) {
+                    return null;
+                } else {
+                    throw new Error('無法讀取 GitHub 數據');
+                }
+            } catch (error) {
+                console.error('Error reading from GitHub:', error);
+                updateSyncStatus('error', '同步失敗');
+                return null;
+            }
+        }
+
+        async function pushToGitHub(data) {
+            try {
+                updateSyncStatus('syncing', '保存中...');
+                const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+                
+                let sha = null;
+                const getResponse = await fetch(url, {
+                    headers: {
+                        'Authorization': `token ${GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (getResponse.ok) {
+                    const fileData = await getResponse.json();
+                    sha = fileData.sha;
+                }
+
+                const content = btoa(JSON.stringify(data, null, 2));
+
+                const body = {
+                    message: `🏝️ 迪寶兒更新了冒險日誌 - ${new Date().toLocaleString('zh-TW')}`,
+                    content: content,
+                    branch: GITHUB_CONFIG.branch
+                };
+
+                if (sha) body.sha = sha;
+
+                const pushResponse = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (pushResponse.ok) {
+                    lastSync = Date.now();
+                    updateSyncStatus('synced', '已同步');
+                    return true;
+                } else {
+                    throw new Error('無法推送到 GitHub');
+                }
+            } catch (error) {
+                console.error('Error pushing to GitHub:', error);
+                updateSyncStatus('error', '保存失敗');
+                return false;
+            }
+        }
+
+        function updateSyncStatus(status, text) {
+            const statusEl = document.getElementById('syncStatus');
+            statusEl.className = `sync-status ${status}`;
+            document.getElementById('syncText').textContent = text;
+        }
+
+        async function loadData() {
+            const remoteData = await getGitHubFileData();
+            if (remoteData) {
+                try {
+                    const parsed = typeof remoteData === 'string' ? JSON.parse(remoteData) : remoteData;
+                    visitData = parsed.visitData || {};
+                    islandNotes = parsed.islandNotes || {};
+                    customIslands = parsed.customIslands || {};
+                    updateSyncStatus('synced', '已同步');
+                } catch (e) {
+                    console.error('Error parsing remote data:', e);
+                }
+            } else {
+                visitData = JSON.parse(localStorage.getItem('visitData')) || {};
+                islandNotes = JSON.parse(localStorage.getItem('islandNotes')) || {};
+                customIslands = JSON.parse(localStorage.getItem('customIslands')) || {};
+            }
+            
+            updateDisplay();
+        }
+
+        async function saveData() {
+            const data = {
+                visitData,
+                islandNotes,
+                customIslands,
+                lastUpdated: new Date().toISOString()
+            };
+
+            localStorage.setItem('visitData', JSON.stringify(visitData));
+            localStorage.setItem('islandNotes', JSON.stringify(islandNotes));
+            localStorage.setItem('customIslands', JSON.stringify(customIslands));
+            
+            await pushToGitHub(data);
+        }
 
         function renderIslands(islands) {
             const list = document.getElementById('islandList');
@@ -680,35 +860,35 @@
             currentIsland = null;
         }
 
-        function addVisit() {
+        async function addVisit() {
             if (!currentIsland) return;
             if (!visitData[currentIsland.name]) {
                 visitData[currentIsland.name] = { count: 0, date: new Date().toLocaleDateString('zh-TW') };
             }
             visitData[currentIsland.name].count++;
-            localStorage.setItem('visitData', JSON.stringify(visitData));
             document.getElementById('visitCount').textContent = visitData[currentIsland.name].count;
+            await saveData();
             updateDisplay();
         }
 
-        function resetVisits() {
+        async function resetVisits() {
             if (!currentIsland) return;
             if (confirm('真的要重新計算嗎？')) {
                 delete visitData[currentIsland.name];
-                localStorage.setItem('visitData', JSON.stringify(visitData));
                 document.getElementById('visitCount').textContent = 0;
+                await saveData();
                 updateDisplay();
             }
         }
 
-        function saveIslandNotes() {
+        async function saveIslandNotes() {
             if (!currentIsland) return;
             islandNotes[currentIsland.name] = document.getElementById('islandNotes').value;
-            localStorage.setItem('islandNotes', JSON.stringify(islandNotes));
+            await saveData();
             alert('筆記已保存～💚');
         }
 
-        function addCustomIsland(event) {
+        async function addCustomIsland(event) {
             event.preventDefault();
             const name = document.getElementById('customName').value.trim();
             const type = document.getElementById('customType').value;
@@ -735,8 +915,6 @@
                 isCustom: true
             };
 
-            localStorage.setItem('customIslands', JSON.stringify(customIslands));
-            
             document.getElementById('customName').value = '';
             document.getElementById('customType').value = '';
             document.getElementById('customResources').value = '';
@@ -744,14 +922,15 @@
             document.getElementById('customDescription').value = '';
 
             alert(`✅ ${name} 已加入探險清單！`);
+            await saveData();
             updateCustomIslandsList();
             filterIslands();
         }
 
-        function deleteCustomIsland(id) {
+        async function deleteCustomIsland(id) {
             if (confirm('確定要移除這個島嶼嗎？')) {
                 delete customIslands[id];
-                localStorage.setItem('customIslands', JSON.stringify(customIslands));
+                await saveData();
                 updateCustomIslandsList();
                 filterIslands();
             }
@@ -884,9 +1063,21 @@
             filterIslands();
         }
 
-        filterIslands();
-        updateStats();
-        updateCustomIslandsList();
+        loadData();
+
+        setInterval(async () => {
+            const remoteData = await getGitHubFileData();
+            if (remoteData) {
+                try {
+                    const parsed = typeof remoteData === 'string' ? JSON.parse(remoteData) : remoteData;
+                    if (parsed.lastUpdated) {
+                        updateDisplay();
+                    }
+                } catch (e) {
+                    console.error('Error parsing remote data during refresh:', e);
+                }
+            }
+        }, 30000);
 
         document.getElementById('modalOverlay').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
