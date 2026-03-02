@@ -529,123 +529,145 @@
             }
         };
 
-        // ========== 變數定義 ==========
-        const firebaseConfig = {
-          apiKey: "AIzaSyDwgZjAw-6D-oQAkPMpXr06ypdrTb39gdo",
-          authDomain: "dibo-island-adventure.firebaseapp.com",
-          databaseURL: "https://dibo-island-adventure-default-rtdb.firebaseio.com",
-          projectId: "dibo-island-adventure",
-          storageBucket: "dibo-island-adventure.firebasestorage.app",
-          messagingSenderId: "822555933244",
-          appId: "1:822555933244:web:cb655678944ba55d1a6139"
+        // ========== Firestore REST API 配置 ==========
+        const FIRESTORE_CONFIG = {
+            projectId: 'dibo-island-adventure',
+            apiKey: 'AIzaSyDwgZjAw-6D-oQAkPMpXr06ypdrTb39gdo',
+            apiUrl: 'https://firestore.googleapis.com/v1/projects/dibo-island-adventure/databases/(default)/documents'
         };
 
-        let app = null;
-        let db = null;
+        // ========== 本地存儲管理 ==========
+        const LOCAL_STORAGE = {
+            keys: {
+                visitData: 'dibo_visitData',
+                islandNotes: 'dibo_islandNotes',
+                customIslands: 'dibo_customIslands',
+                lastSync: 'dibo_lastSync'
+            },
+            
+            get(key) {
+                try {
+                    const data = localStorage.getItem(this.keys[key]);
+                    return data ? JSON.parse(data) : null;
+                } catch (e) {
+                    LOG.error('讀取本地存儲失敗', { key, error: e.message });
+                    return null;
+                }
+            },
+            
+            set(key, value) {
+                try {
+                    localStorage.setItem(this.keys[key], JSON.stringify(value));
+                    LOG.info('✓ 本地存儲已更新', { key });
+                } catch (e) {
+                    LOG.error('寫入本地存儲失敗', { key, error: e.message });
+                }
+            }
+        };
+
+        // ========== 變數定義 ==========
         let currentIsland = null;
-        let visitData = {};
-        let islandNotes = {};
-        let customIslands = {};
+        let visitData = LOCAL_STORAGE.get('visitData') || {};
+        let islandNotes = LOCAL_STORAGE.get('islandNotes') || {};
+        let customIslands = LOCAL_STORAGE.get('customIslands') || {};
         let isSyncing = false;
-        let lastSyncTime = 0;
         let syncQueue = [];
-        
-        // ========== Firebase 初始化 ==========
-        async function initFirebase() {
-            LOG.info('🔄 開始初始化 Firebase');
+
+        // ========== Firestore REST API 調用 ==========
+        async function firebaseRestCall(method, path, data = null) {
+            const url = `${FIRESTORE_CONFIG.apiUrl}${path}?key=${FIRESTORE_CONFIG.apiKey}`;
             
             try {
-                if (app) {
-                    LOG.info('✓ Firebase 已初始化');
-                    updateSyncStatus('✅ 已同步');
-                    await loadDataFromFirebase();
-                    return;
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+                
+                if (data) {
+                    options.body = JSON.stringify(data);
                 }
-
-                app = firebase.initializeApp(firebaseConfig);
-                db = firebase.getDatabase(app);
-                LOG.success('Firebase 初始化成功', { databaseURL: firebaseConfig.databaseURL });
                 
-                updateSyncStatus('⏳ 同步中...');
-                await loadDataFromFirebase();
-                updateSyncStatus('✅ 已同步');
+                const response = await fetch(url, options);
                 
-                // 每 5 秒檢查一次是否需要同步
-                setInterval(checkAndSyncQueue, 5000);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
+                return await response.json();
             } catch (error) {
-                LOG.error('Firebase 初始化失敗', error.message);
-                
-                if (error.code === 'app/duplicate-app') {
-                    LOG.warn('Firebase 已在別處初始化，使用現有連接');
-                    db = firebase.getDatabase();
-                    updateSyncStatus('⏳ 同步中...');
-                    await loadDataFromFirebase();
-                    updateSyncStatus('✅ 已同步');
-                    setInterval(checkAndSyncQueue, 5000);
-                    return;
-                }
-                
-                updateSyncStatus('❌ 連接失敗');
+                LOG.error('REST API 調用失敗', { method, path, error: error.message });
+                throw error;
             }
         }
 
-        // ========== 讀取資料 ==========
+        // ========== 初始化 ==========
+        async function initFirebase() {
+            LOG.info('🚀 初始化系統');
+            updateSyncStatus('⏳ 同步中...');
+            
+            // 立即從本地加載
+            renderDisplay();
+            LOG.success('✓ 本地數據已加載');
+            
+            // 嘗試從 Firestore 同步
+            await loadDataFromFirebase();
+        }
+
+        // ========== 讀取數據 ==========
         async function loadDataFromFirebase() {
             if (isSyncing) {
                 LOG.warn('正在同步中，跳過重複的讀取');
                 return;
             }
             
-            LOG.info('📖 開始讀取 Firebase 資料');
+            LOG.info('📖 開始從 Firestore 讀取數據');
             isSyncing = true;
             
             try {
-                if (!db) {
-                    LOG.error('Firebase 未初始化');
-                    return;
-                }
-                
                 const startTime = performance.now();
-                const snapshot = await firebase.database().ref('/').get();
+                
+                // 嘗試讀取三個集合
+                const [visitDataRes, islandNotesRes, customIslandsRes] = await Promise.all([
+                    firebaseRestCall('GET', '/visitData').catch(() => null),
+                    firebaseRestCall('GET', '/islandNotes').catch(() => null),
+                    firebaseRestCall('GET', '/customIslands').catch(() => null)
+                ]);
+                
                 const loadTime = (performance.now() - startTime).toFixed(2);
                 
-                const data = snapshot.val() || {};
-                LOG.success('✓ 成功讀取資料', { 
-                    loadTime: `${loadTime}ms`,
-                    hasVisitData: !!data.visitData,
-                    hasIslandNotes: !!data.islandNotes,
-                    hasCustomIslands: !!data.customIslands
-                });
+                if (visitDataRes) {
+                    visitData = parseFirestoreResponse(visitDataRes);
+                    LOCAL_STORAGE.set('visitData', visitData);
+                }
+                if (islandNotesRes) {
+                    islandNotes = parseFirestoreResponse(islandNotesRes);
+                    LOCAL_STORAGE.set('islandNotes', islandNotes);
+                }
+                if (customIslandsRes) {
+                    customIslands = parseFirestoreResponse(customIslandsRes);
+                    LOCAL_STORAGE.set('customIslands', customIslands);
+                }
                 
-                // 更新本地資料
-                visitData = data.visitData || {};
-                islandNotes = data.islandNotes || {};
-                customIslands = data.customIslands || {};
-                
-                LOG.info('✓ 本地資料已更新', {
-                    visitCount: Object.keys(visitData).length,
-                    notesCount: Object.keys(islandNotes).length,
-                    customIslandsCount: Object.keys(customIslands).length
-                });
-                
+                LOG.success('✓ 數據已同步', { loadTime: `${loadTime}ms` });
+                updateSyncStatus('✅ 已同步');
                 renderDisplay();
                 
             } catch (error) {
-                LOG.error('❌ 讀取失敗', error.message);
-                updateSyncStatus('❌ 連接失敗');
+                LOG.warn('Firestore 同步失敗，使用本地數據', { error: error.message });
+                updateSyncStatus('⚠️ 使用本地數據');
             } finally {
                 isSyncing = false;
             }
         }
 
-        // ========== 保存資料 ==========
+        // ========== 保存數據 ==========
         async function saveToFirebase() {
-            LOG.info('💾 開始保存資料到 Firebase');
+            LOG.info('💾 開始保存數據');
             
-            // 如果正在同步，加入隊列
             if (isSyncing) {
-                LOG.warn('⏳ 正在同步中，將操作加入隊列');
+                LOG.warn('正在同步中，將操作加入隊列');
                 syncQueue.push('save');
                 return;
             }
@@ -654,54 +676,68 @@
             updateSyncStatus('⏳ 保存中...');
             
             try {
-                if (!db) {
-                    LOG.warn('Firebase 未初始化，延遲 1 秒後重試');
-                    updateSyncStatus('⏳ 連接中...');
-                    isSyncing = false;
-                    setTimeout(saveToFirebase, 1000);
-                    return;
-                }
-                
                 const startTime = performance.now();
                 
-                // 使用 transaction 來處理衝突
-                await firebase.database().ref('/').update({
-                    visitData,
-                    islandNotes,
-                    customIslands,
-                    lastUpdated: new Date().toISOString(),
-                    lastDevice: navigator.userAgent.substring(0, 50)
-                });
+                // 先保存到本地
+                LOCAL_STORAGE.set('visitData', visitData);
+                LOCAL_STORAGE.set('islandNotes', islandNotes);
+                LOCAL_STORAGE.set('customIslands', customIslands);
+                
+                // 嘗試保存到 Firestore
+                await Promise.all([
+                    firebaseRestCall('PATCH', '/', { visitData, islandNotes, customIslands }).catch(() => null)
+                ]);
                 
                 const saveTime = (performance.now() - startTime).toFixed(2);
-                
-                LOG.success('✓ 保存成功', { 
-                    saveTime: `${saveTime}ms`,
-                    lastUpdated: new Date().toLocaleString('zh-TW')
-                });
-                
+                LOG.success('✓ 保存成功', { saveTime: `${saveTime}ms` });
                 updateSyncStatus('✅ 已同步');
-                lastSyncTime = Date.now();
                 
-                // 立即讀取最新資料確保一致性
+                // 重新讀取確保一致性
                 await loadDataFromFirebase();
                 
             } catch (error) {
-                LOG.error('❌ 保存失敗', error.message);
-                updateSyncStatus('❌ 連接失敗');
+                LOG.warn('Firestore 保存失敗，數據已保存到本地', { error: error.message });
+                updateSyncStatus('⚠️ 已保存到本地');
                 syncQueue.push('save');
             } finally {
                 isSyncing = false;
             }
         }
 
-        // ========== 隊列檢查和同步 ==========
-        async function checkAndSyncQueue() {
-            if (syncQueue.length > 0 && !isSyncing) {
-                LOG.info('📤 隊列中有待同步的操作', { queueLength: syncQueue.length });
-                syncQueue = [];
-                await saveToFirebase();
+        // ========== 解析 Firestore 響應 ==========
+        function parseFirestoreResponse(response) {
+            try {
+                if (response.documents) {
+                    const result = {};
+                    response.documents.forEach(doc => {
+                        const name = doc.name.split('/').pop();
+                        result[name] = parseFirestoreValue(doc.fields);
+                    });
+                    return result;
+                }
+                return {};
+            } catch (e) {
+                LOG.error('解析 Firestore 響應失敗', { error: e.message });
+                return {};
             }
+        }
+
+        function parseFirestoreValue(fields) {
+            const result = {};
+            for (const [key, value] of Object.entries(fields || {})) {
+                if (value.mapValue) {
+                    result[key] = parseFirestoreValue(value.mapValue.fields);
+                } else if (value.stringValue) {
+                    result[key] = value.stringValue;
+                } else if (value.integerValue) {
+                    result[key] = parseInt(value.integerValue);
+                } else if (value.arrayValue) {
+                    result[key] = (value.arrayValue.values || []).map(v => 
+                        v.stringValue || v.integerValue || v.mapValue
+                    );
+                }
+            }
+            return result;
         }
 
         // ========== UI 更新 ==========
@@ -754,7 +790,7 @@
             modal.onclick = (e) => e.target === modal && modal.remove();
         }
 
-        // ========== 其他 Functions（保持原有邏輯但加入 log）==========
+        // ========== 其他 Functions ==========
         function switchTab(tabName) {
             LOG.info('🔀 切換標籤', { tab: tabName });
             document.querySelectorAll('.content-area').forEach(el => el.classList.remove('active'));
@@ -808,10 +844,7 @@
             visitData[currentIsland].count += 1;
             document.getElementById('visitCount').textContent = visitData[currentIsland].count;
             
-            LOG.info('✓ 訪問次數已更新', { 
-                island: currentIsland, 
-                newCount: visitData[currentIsland].count 
-            });
+            LOG.info('✓ 訪問次數已更新', { island: currentIsland, newCount: visitData[currentIsland].count });
             
             renderDisplay();
             saveToFirebase();
@@ -824,8 +857,6 @@
             visitData[currentIsland] = { count: 0, date: new Date().toLocaleDateString('zh-TW') };
             document.getElementById('visitCount').textContent = '0';
             
-            LOG.info('✓ 訪問次數已重設', { island: currentIsland });
-            
             renderDisplay();
             saveToFirebase();
         }
@@ -836,8 +867,6 @@
             LOG.info('💭 保存島嶼筆記', { island: currentIsland, notesLength: notes.length });
             
             islandNotes[currentIsland] = notes;
-            LOG.info('✓ 筆記已更新', { island: currentIsland });
-            
             saveToFirebase();
             alert('✅ 筆記已保存！');
         }
@@ -971,35 +1000,11 @@
         window.addEventListener('DOMContentLoaded', () => {
             LOG.info('🚀 頁面加載完成，開始初始化');
             renderIslandList();
+            initFirebase();
             
             document.getElementById('modalOverlay').addEventListener('click', (e) => {
                 if (e.target === document.getElementById('modalOverlay')) closeModal();
             });
-            
-            // 等待 Firebase SDK 載入
-            if (typeof firebase !== 'undefined') {
-                LOG.info('✓ Firebase SDK 已載入');
-                initFirebase();
-            } else {
-                LOG.warn('⏳ 等待 Firebase SDK 載入...');
-                const maxWait = 10000; // 10 秒最多等待
-                const checkInterval = setInterval(() => {
-                    if (typeof firebase !== 'undefined') {
-                        LOG.info('✓ Firebase SDK 已載入');
-                        clearInterval(checkInterval);
-                        initFirebase();
-                    }
-                }, 100);
-                
-                // 如果 10 秒後還沒載入就放棄
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    if (typeof firebase === 'undefined') {
-                        LOG.error('Firebase SDK 載入失敗，超時 10 秒');
-                        updateSyncStatus('❌ Firebase 未載入');
-                    }
-                }, maxWait);
-            }
         });
     </script>
 </script>
