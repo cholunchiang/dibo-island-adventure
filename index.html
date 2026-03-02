@@ -971,11 +971,35 @@
         window.addEventListener('DOMContentLoaded', () => {
             LOG.info('🚀 頁面加載完成，開始初始化');
             renderIslandList();
-            initFirebase();
             
             document.getElementById('modalOverlay').addEventListener('click', (e) => {
                 if (e.target === document.getElementById('modalOverlay')) closeModal();
             });
+            
+            // 等待 Firebase SDK 載入
+            if (typeof firebase !== 'undefined') {
+                LOG.info('✓ Firebase SDK 已載入');
+                initFirebase();
+            } else {
+                LOG.warn('⏳ 等待 Firebase SDK 載入...');
+                const maxWait = 10000; // 10 秒最多等待
+                const checkInterval = setInterval(() => {
+                    if (typeof firebase !== 'undefined') {
+                        LOG.info('✓ Firebase SDK 已載入');
+                        clearInterval(checkInterval);
+                        initFirebase();
+                    }
+                }, 100);
+                
+                // 如果 10 秒後還沒載入就放棄
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    if (typeof firebase === 'undefined') {
+                        LOG.error('Firebase SDK 載入失敗，超時 10 秒');
+                        updateSyncStatus('❌ Firebase 未載入');
+                    }
+                }, maxWait);
+            }
         });
     </script>
 </script>
